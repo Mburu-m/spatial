@@ -1,0 +1,169 @@
+---
+title: "US_accidents"
+author: "Mburu"
+date: "3/12/2020"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message  = FALSE, warning = FALSE)
+```
+
+##
+
+```{r}
+library(tidyverse)
+library(plotly)
+library(lubridate)
+library(data.table)
+library(zoo)
+library(knitr)
+library(sf)
+library(sp)
+
+
+
+```
+
+#
+
+```{r }
+us_accidents <- fread("US_Accidents_Dec19.csv")
+
+head(us_accidents) %>%
+    kable()
+```
+
+
+```{r}
+setnames(us_accidents, "State", "abbr") # to work with maps data
+
+sum_dat <- us_accidents[, .(freq = .N), by = abbr] %>%
+    .[order(freq, decreasing = T)]
+
+
+```
+
+
+
+
+
+```{r, fig.width=9, fig.height=5}
+us_df <- usmap::us_map()
+
+
+us_sum_acc <- merge(sum_dat, us_df, by ="abbr" )
+
+
+ggplot(us_sum_acc, aes(x, y, group = group, 
+                                fill = freq, text = full))+
+    geom_polygon()+
+    theme_void()+
+    scale_fill_viridis_c()
+    
+```
+
+
+```{r}
+time_cols <- c("Start_Time", "End_Time")
+
+us_accidents[, (time_cols) := lapply(.SD, ymd_hms), .SDcols = time_cols]
+
+#extract date
+us_accidents[, Start_Date := as.Date(Start_Time)]
+
+## tred in numbers
+
+#on average how many deaths occur per day
+daily_dat <- us_accidents[, .(freq = .N),
+                          by = .(abbr,Start_Date)] %>%
+    .[, .(daily_average = mean(freq)), by = abbr]
+
+
+us_daily_acc <- merge(daily_dat, us_df, by ="abbr" )
+
+```
+
+
+
+
+```{r,  fig.width=9, fig.height=5}
+
+ggplot(us_daily_acc, aes(x, y, group = group, 
+                                fill = daily_average))+
+             geom_polygon()+
+             scale_fill_viridis_c()+
+             theme_void()
+    
+    
+```
+
+
+```{r}
+ca_counties <- st_read("CA_Counties")
+
+ca_counties  <- st_transform(ca_counties , crs = "+proj=longlat")
+
+```
+
+
+```{r,  fig.width=9, fig.height=5}
+ca_acc <- us_accidents[abbr == "CA"]
+
+ggplot(ca_counties)+
+    geom_sf()+
+    geom_point(data = ca_acc,
+               aes(Start_Lng,Start_Lat), 
+               color = "blue", alpha = 0.9) +
+    theme_void()
+```
+
+
+
+```{r}
+
+ca_counties_sp <- as(ca_counties, Class = "Spatial")
+
+library(spatialEco)
+
+proj4string = CRS("+proj=longlat")
+ca_acc_shp <- SpatialPointsDataFrame(ca_acc[,.(Start_Lng,Start_Lat)], 
+                                      ca_acc ,    
+                                      proj4string = proj4string)  
+
+```
+
+
+```{r}
+pts.poly <- point.in.poly(ca_acc_shp, ca_counties_sp)
+
+ca_acc_comb <- st_as_sf(pts.poly) %>% setDT()
+
+ca_acc_comb[, geometry := NULL]
+```
+
+
+
+```{r}
+df_sum <- ca_acc_comb[, .(freq = .N), by = .(NAME, Start_Date)] %>%
+    .[, .(mean_daily = mean(freq)), by = NAME] %>%
+    merge(ca_counties, by = "NAME")
+
+df_sum <- st_set_geometry(df_sum, "geometry")
+
+```
+
+
+
+
+```{r, fig.width=9, fig.height=5}
+
+library(tmap)
+
+
+tm_shape(df_sum)+
+    tm_polygons(col= "mean_daily", palette = "BuPu")+
+    tm_borders(col = "black")
+
+```
+
