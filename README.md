@@ -136,7 +136,7 @@ ca_acc_comb[, geometry := NULL]
 
 ``` r
 df_sum <- ca_acc_comb[, .(freq = .N), by = .(NAME, Start_Date)] %>%
-    .[, .(mean_daily = mean(freq)), by = NAME] %>%
+    .[, .(mean_daily = mean(freq), median_daily = median(freq)), by = NAME] %>%
     merge(ca_counties, by = "NAME")
 
 df_sum <- st_set_geometry(df_sum, "geometry")
@@ -152,3 +152,11 @@ tm_shape(df_sum)+
 ```
 
 ![](us_acc_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+``` r
+tm_shape(df_sum)+
+    tm_polygons(col= "median_daily", palette = "BuPu")+
+    tm_borders(col = "black")
+```
+
+![](us_acc_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
