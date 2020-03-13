@@ -160,3 +160,94 @@ tm_shape(df_sum)+
 ```
 
 ![](us_acc_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+
+``` r
+severity_cases <- us_accidents[, .(number_cases = .N), by = .(abbr, Severity )] %>%
+    dcast(abbr~Severity, value.var = "number_cases", fun.aggregate = sum)
+
+setorder(severity_cases, -3, -4)
+
+kable(severity_cases)
+```
+
+| abbr |   1 |      2 |      3 |    4 |
+| :--- | --: | -----: | -----: | ---: |
+| CA   | 246 | 445381 | 211189 | 6388 |
+| TX   | 120 | 215027 |  79467 | 3448 |
+| FL   |  71 | 144622 |  71631 | 7422 |
+| NY   |  22 |  82388 |  49968 | 5421 |
+| GA   |  27 |  34605 |  42393 | 6595 |
+| VA   |  28 |  42556 |  32750 | 4623 |
+| SC   |  40 | 114339 |  31366 |  944 |
+| MI   |  29 |  52583 |  31361 | 4721 |
+| MN   |   9 |  37017 |  25348 |  353 |
+| IL   |  15 |  58901 |  24706 | 2768 |
+| WA   |  30 |  37528 |  21129 | 2680 |
+| NC   |  30 | 121261 |  18837 | 2332 |
+| MD   |  33 |  20285 |  18341 | 4669 |
+| TN   |  20 |  38526 |  18275 | 1468 |
+| PA   |  37 |  67778 |  17862 | 4718 |
+| OH   |  16 |  33817 |  17057 | 4973 |
+| CO   |   5 |  21235 |  15699 | 3185 |
+| MO   |   7 |  12476 |  15090 | 1439 |
+| NJ   |  21 |  33264 |  13904 | 2753 |
+| MA   |  15 |  19907 |  12839 |  253 |
+| AZ   |  21 |  47248 |  12003 | 3058 |
+| AL   |  18 |  23906 |  11931 |  514 |
+| CT   |  17 |  10650 |  10455 | 1681 |
+| UT   |   3 |  29890 |  10301 | 1191 |
+| LA   |  19 |  41674 |   9887 |  901 |
+| KY   |   7 |   9428 |   8927 |  760 |
+| IN   |  17 |  18705 |   8826 | 2492 |
+| OR   |   2 |  61538 |   6921 | 2379 |
+| WI   |   1 |   8937 |   6182 | 2460 |
+| RI   |   0 |   4963 |   5418 |  102 |
+| IA   |   3 |   4678 |   4828 |  837 |
+| OK   |  15 |  46194 |   4677 |  411 |
+| NE   |  12 |  18868 |   3370 |  255 |
+| KS   |   0 |   3262 |   3246 |  379 |
+| NV   |   1 |   6050 |   3043 |  430 |
+| MS   |   1 |   3317 |   2373 |  270 |
+| NM   |   1 |   2775 |   1917 |  327 |
+| NH   |   2 |   5664 |   1232 |  166 |
+| DC   |   1 |   2382 |    867 |  403 |
+| WV   |   1 |   1352 |    467 |  454 |
+| AR   |   0 |    860 |    439 |  450 |
+| DE   |   3 |   3457 |    400 |  574 |
+| ID   |   0 |   1373 |    189 |  195 |
+| WY   |   0 |    129 |    176 |  187 |
+| MT   |   0 |    263 |    135 |  106 |
+| VT   |   1 |    414 |    111 |   59 |
+| ME   |   1 |   1899 |     68 |   97 |
+| ND   |   0 |     21 |     11 |   11 |
+| SD   |   0 |     17 |      8 |   35 |
+
+``` r
+#convert to minutes
+us_accidents[, time_acc := (as.numeric(End_Time - Start_Time))/60]
+
+#check if severity is associated with time
+p <- ggplot(us_accidents) +
+    #geom_bar() +
+    geom_boxplot(aes(as.factor(Severity), log(time_acc)))
+
+p
+```
+
+![](us_acc_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+
+``` r
+us_accidents[, .(mean_dur = mean(time_acc, na.rm = T),
+                meadian_dur =  median(time_acc, na.rm = T),
+                first_quartile = quantile(time_acc, 0.25, na.rm = T),
+                third_quartile = quantile(time_acc, 0.75, na.rm = T)),
+             by = Severity] %>%
+    kable()
+```
+
+| Severity | mean\_dur | meadian\_dur | first\_quartile | third\_quartile |
+| -------: | --------: | -----------: | --------------: | --------------: |
+|        3 |  79.29419 |     34.40000 |        29.60000 |        59.43333 |
+|        2 | 102.96922 |     44.71667 |        29.76667 |        76.56667 |
+|        1 |  45.25671 |     30.00000 |        30.00000 |        59.70000 |
+|        4 | 912.54198 |    360.00000 |        29.60000 |       360.00000 |

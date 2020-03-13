@@ -131,6 +131,8 @@ ca_acc_shp <- SpatialPointsDataFrame(ca_acc[,.(Start_Lng,Start_Lat)],
                                       ca_acc ,    
                                       proj4string = proj4string)  
 
+
+
 ```
 
 
@@ -177,3 +179,44 @@ tm_shape(df_sum)+
     tm_borders(col = "black")
 
 ```
+
+
+```{r}
+severity_cases <- us_accidents[, .(number_cases = .N), by = .(abbr, Severity )] %>%
+    dcast(abbr~Severity, value.var = "number_cases", fun.aggregate = sum)
+
+setorder(severity_cases, -3, -4)
+
+kable(severity_cases)
+```
+
+
+
+```{r}
+#convert to minutes
+us_accidents[, time_acc := (as.numeric(End_Time - Start_Time))/60]
+
+#check if severity is associated with time
+p <- ggplot(us_accidents) +
+    #geom_bar() +
+    geom_boxplot(aes(as.factor(Severity), log(time_acc)))
+
+p
+```
+
+
+
+
+```{r}
+
+us_accidents[, .(mean_dur = mean(time_acc, na.rm = T),
+                meadian_dur =  median(time_acc, na.rm = T),
+                first_quartile = quantile(time_acc, 0.25, na.rm = T),
+                third_quartile = quantile(time_acc, 0.75, na.rm = T)),
+             by = Severity] %>%
+    kable()
+
+
+```
+
+

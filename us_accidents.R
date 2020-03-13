@@ -4,6 +4,7 @@ library(plotly)
 library(lubridate)
 library(data.table)
 library(zoo)
+library(microbenchmark)
 us_accidents <- fread("US_Accidents_Dec19.csv")
 
 head(us_accidents) %>% View
@@ -13,10 +14,11 @@ head(us_accidents) %>% View
 #weather condition that most accidents occur
 setnames(us_accidents, "State", "abbr") # to work with maps data
 
-sum_dat <- us_accidents[, .(freq = .N), by = abbr] %>%
-    .[order(freq, decreasing = T)]
+microbenchmark(sum_dat <- us_accidents[, .(freq = .N), by = abbr] )
 
 
+microbenchmark( sum_dat %>% group_by(abbr) %>%
+                    summarise(freq = n()))
 
 ## us map
 #just a general view
@@ -35,7 +37,7 @@ ggplotly(ggplot(us_sum_acc, aes(x, y, group = group,
 
 time_cols <- c("Start_Time", "End_Time")
 
-us_accidents[, (time_cols) := lapply(.SD, ymd_hms), .SDcols = time_cols]
+system.time(us_accidents[, (time_cols) := lapply(.SD, ymd_hms), .SDcols = time_cols])
 
 #extract date
 us_accidents[, Start_Date := as.Date(Start_Time)]
